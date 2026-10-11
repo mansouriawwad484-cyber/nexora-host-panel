@@ -1,1 +1,66 @@
-cbsjuq
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nexora Host — لوحة التحكم</title>
+<style>
+:root{color-scheme:dark;--bg:#090b12;--panel:#121622;--line:#242b3d;--text:#f5f7ff;--muted:#a4abc0;--accent:#9d8cff;--accent2:#57d6c5}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 80% 0,#202047 0,transparent 40%),var(--bg);color:var(--text);font:16px system-ui,Arial,sans-serif}header{display:flex;align-items:center;justify-content:space-between;padding:20px max(5vw,18px);border-bottom:1px solid var(--line)}.brand{font-size:22px;font-weight:800;letter-spacing:.4px}.brand span{color:var(--accent)}button,a.button{border:0;border-radius:12px;background:var(--accent);color:#090b12;padding:12px 16px;font-weight:750;text-decoration:none;cursor:pointer}button.secondary{background:#262d40;color:var(--text)}main{max-width:1050px;margin:auto;padding:36px 18px}.hero{padding:32px 0 22px}.eyebrow{color:var(--accent2);font-weight:700}.hero h1{font-size:clamp(32px,6vw,54px);margin:10px 0}.muted{color:var(--muted);line-height:1.8}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin:24px 0}.card{background:linear-gradient(145deg,#151a29,#10131d);border:1px solid var(--line);border-radius:18px;padding:22px}.card h2{font-size:18px;margin-top:0}.price{font-size:28px;font-weight:800;margin:10px 0}.section-title{margin-top:38px}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}input{background:#0b0e16;border:1px solid #343b50;color:var(--text);border-radius:10px;padding:12px;min-width:0;width:100%;margin:6px 0 12px}label{display:block;color:var(--muted);font-size:14px}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}#status{margin:14px 0;min-height:24px;color:var(--accent2)}#owner{display:none}.notice{border:1px solid #4d416b;background:#1b1730;padding:14px;border-radius:12px;color:#d9d2ff;font-size:14px}.small{font-size:13px;color:var(--muted)}footer{text-align:center;padding:28px;color:var(--muted);border-top:1px solid var(--line)}@media(max-width:600px){.form-grid{grid-template-columns:1fr}header{padding:16px}.hero{padding-top:24px}}
+</style>
+</head>
+<body>
+<header><div class="brand">NEXORA <span>HOST</span></div><div class="row"><button id="login">تسجيل الدخول عبر Discord</button><button class="secondary" id="logout" hidden>تسجيل الخروج</button></div></header>
+<main>
+<section class="hero"><div class="eyebrow">BOT HOSTING • CONTROL PANEL</div><h1>استضافتك، تحت سيطرتك.</h1><p class="muted">لوحة Nexora Host لإدارة الرصيد وطلبات Panels من مكان واحد. سجّل دخولك عبر Discord لمشاهدة رصيدك.</p></section>
+<div id="status" role="status"></div>
+<section class="cards">
+<div class="card"><h2>حسابك</h2><div id="account">لم تسجّل الدخول بعد.</div><p class="muted">رصيد الكوينزات</p><div class="price" id="coins">—</div></div>
+<div class="card"><h2>Starter Panel</h2><div class="price">100 <span class="small">كوينز</span></div><p class="muted">تسجيل طلب شراء من رصيدك.</p><button class="buy" data-plan="starter">شراء بالكوينزات</button></div>
+<div class="card"><h2>Standard Panel</h2><div class="price">250 <span class="small">كوينز</span></div><p class="muted">مساحة أكبر حسب إعدادات الخدمة المستقبلية.</p><button class="buy" data-plan="standard">شراء بالكوينزات</button></div>
+</section>
+<section id="owner" class="card">
+<h2>لوحة المالك</h2><p class="muted">إضافة الكوينزات للأعضاء. الوصول مقيّد على الخادم بمعرّف المالك الموجود في إعدادات البيئة.</p>
+<div class="form-grid"><div><label for="target">Discord User ID</label><input id="target" inputmode="numeric" placeholder="مثال: 123456789012345678"></div><div><label for="amount">عدد الكوينزات</label><input id="amount" type="number" min="1" max="1000000" placeholder="100"></div></div>
+<label for="reason">السبب / الملاحظة</label><input id="reason" maxlength="200" placeholder="منح كوينزات">
+<button id="grant">إضافة الكوينزات</button> <button id="refresh" class="secondary">تحديث قائمة الأعضاء</button>
+<div id="users"></div>
+</section>
+<section class="section-title notice"><strong>ملاحظة عن النسخة الحالية:</strong> هذه بداية آمنة لنظام الدخول والمحفظة وطلبات الشراء. لا يتم تشغيل ملفات بوتات الأعضاء أو إنشاء خوادم فعلية بعد؛ يلزم لاحقًا إعداد خادم تشغيل مع عزل وصلاحيات وحدود موارد.</section>
+</main>
+<footer>Nexora Host · Built for safer bot management</footer>
+<script>
+const $ = (id) => document.getElementById(id);
+async function api(url, options={}) {
+  const response = await fetch(url, {credentials:"same-origin",headers:{"Content-Type":"application/json",...(options.headers||{})},...options});
+  const data = await response.json().catch(()=>({error:"حدث خطأ غير متوقع."}));
+  if (!response.ok) throw new Error(data.error || "فشل الطلب.");
+  return data;
+}
+function message(text, bad=false){$("status").textContent=text;$("status").style.color=bad?"#ff9d9d":"#57d6c5";}
+async function loadMe(){
+  try{
+    const d=await api("/api/me");
+    $("login").hidden=d.loggedIn;
+    $("logout").hidden=!d.loggedIn;
+    if(!d.loggedIn){$("account").textContent="لم تسجّل الدخول بعد.";$("coins").textContent="—";$("owner").style.display="none";return;}
+    $("account").textContent=d.user.username+" · "+d.user.id;
+    $("coins").textContent=Number(d.user.coins).toLocaleString("en-US");
+    $("owner").style.display=d.isOwner?"block":"none";
+    if(d.isOwner) await loadUsers();
+  }catch(e){message(e.message,true);}
+}
+async function loadUsers(){
+  try{
+    const d=await api("/api/owner/users");
+    $("users").innerHTML="<h3>الأعضاء المسجّلون</h3>"+(d.users.length?d.users.map(u=>`<div class="small" style="padding:8px 0;border-bottom:1px solid #242b3d">${escapeHtml(u.username)} · ${u.id} — ${u.coins} كوينز</div>`).join(""):"لا يوجد أعضاء بعد.");
+  }catch(e){message(e.message,true);}
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+$("login").onclick=()=>location.href="/auth/discord";
+$("logout").onclick=async()=>{try{await api("/auth/logout",{method:"POST",body:"{}"});location.reload();}catch(e){message(e.message,true);}};
+document.querySelectorAll(".buy").forEach(b=>b.onclick=async()=>{try{const d=await api("/api/panels/purchase",{method:"POST",body:JSON.stringify({plan:b.dataset.plan})});message(d.message);await loadMe();}catch(e){message(e.message,true);}});
+$("grant").onclick=async()=>{try{const d=await api("/api/owner/coins/grant",{method:"POST",body:JSON.stringify({userId:$("target").value,amount:Number($("amount").value),reason:$("reason").value})});message(d.message);await loadMe();}catch(e){message(e.message,true);}};
+$("refresh").onclick=loadUsers;
+loadMe();
+</script>
+</body></html>
